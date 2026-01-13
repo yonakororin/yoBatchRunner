@@ -1,61 +1,149 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Global Elements ---
     const folderInput = document.getElementById('folder-path');
     const verifyBtn = document.getElementById('check-folder-btn');
     const folderStatus = document.getElementById('folder-status');
-    const runnerSection = document.getElementById('runner-section');
-    const openDialogBtn = document.getElementById('open-dialog-btn');
-    const dialog = document.getElementById('run-dialog');
-    const closeModalBtns = document.querySelectorAll('.close-modal');
+
+    // Tab Elements
+    const tabsHeader = document.getElementById('tabs-header');
+    const tabsContent = document.getElementById('tabs-content');
+    const emptyState = document.getElementById('empty-state');
+    const sessionTemplate = document.getElementById('session-template');
+
+    // Dialog Elements (Shared)
+    const runDialog = document.getElementById('run-dialog');
     const dynamicInputs = document.getElementById('dynamic-inputs');
     const executeBtn = document.getElementById('execute-btn');
-    const logMonitor = document.getElementById('log-monitor');
-    const logContent = document.getElementById('log-content');
-    const connectionStatus = document.getElementById('connection-status');
+    const closeModalBtns = document.querySelectorAll('.close-modal');
 
-    let currentConfig = {
-        path: '',
-        params: [],
-        logFile: 'output.log'
-    };
-    let eventSource = null;
+    // Browser Elements
+    const browseBtn = document.getElementById('browse-btn');
+    const browserDialog = document.getElementById('browser-dialog');
+    const browserList = document.getElementById('browser-list');
+    const browserCurrentPath = document.getElementById('browser-current-path');
+    const browserUpBtn = document.getElementById('browser-up-btn');
+    const browserSelectBtn = document.getElementById('browser-select-btn');
 
-    // Verify Folder
-    verifyBtn.addEventListener('click', async () => {
-        const path = folderInput.value.trim();
-        if (!path) return;
+    // --- State Management ---
+    const sessions = {}; // key: tabId, value: { path, params, logFile, intervalId, elements: {} }
+    let activeTabId = null;
+    let targetSessionId = null; // For dialog context
 
-        folderStatus.textContent = 'Scanning...';
-        folderStatus.className = 'status-text';
-        runnerSection.classList.add('hidden');
+    // --- Functions ---
 
-        try {
-            const res = await fetch(`api.php?action=scan&path=${encodeURIComponent(path)}`);
-            const data = await res.json();
+    function createSession(path, data) {
+        // Generate unique ID
+        const tabId = 'tab-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 
-            if (data.found) {
-                folderStatus.textContent = '✓ Valid BatchRunner Project found';
-                folderStatus.className = 'status-text success';
-                runnerSection.classList.remove('hidden');
-
-                currentConfig.path = path;
-                currentConfig.params = data.params;
-                currentConfig.logFile = data.logFile;
+        // --- 1. Create Tab Button ---
+        const tabBtn = document.createElement('div');
+        tabBtn.className = 'tab-btn';
+        const folderName = path.split('/').pop() || path;
+        tabBtn.innerHTML = `
+            <span>${folderName}</span>
+            <span class="tab-close" data-id="${tabId}">&times;</span>
+        `;
+        tabBtn.dataset.id = tabId;
+        tabBtn.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-close')) {
+                closeSession(tabId);
             } else {
-                folderStatus.textContent = '❌ No webrunner.sh found in directory';
-                folderStatus.className = 'status-text error';
+                switchTab(tabId);
             }
-        } catch (e) {
-            folderStatus.textContent = '❌ Error connecting to server';
-            folderStatus.className = 'status-text error';
-            console.error(e);
-        }
-    });
+        });
+        tabsHeader.appendChild(tabBtn);
 
-    // Open Dialog
-    openDialogBtn.addEventListener('click', () => {
+        // --- 2. Create Panel Content ---
+        const fragment = sessionTemplate.content.cloneNode(true);
+        const panel = fragment.querySelector('.session-panel');
+        panel.id = `panel-${tabId}`;
+
+        // Populate static info
+        panel.querySelector('.path-badge').textContent = path;
+
+        // Setup references
+        const elements = {
+            panel: panel,
+            runBtn: panel.querySelector('.open-dialog-btn'),
+            logSection: panel.querySelector('.log-monitor'),
+            logContainer: panel.querySelector('.log-container'),
+            logContent: panel.querySelector('.log-content'),
+            statusBadge: panel.querySelector('.connection-status')
+        };
+
+        // Event Listener for Run
+        elements.runBtn.addEventListener('click', () => {
+            openRunDialog(tabId);
+        });
+
+        tabsContent.appendChild(panel);
+
+        // --- 3. Store Session State ---
+        sessions[tabId] = {
+            id: tabId,
+            path: path,
+            params: data.params || [],
+            logFile: data.logFile || 'output.log',
+            intervalId: null,
+            elements: elements
+        };
+
+        // --- 4. Switch to new tab ---
+        switchTab(tabId);
+        emptyState.classList.add('hidden');
+    }
+
+    function switchTab(tabId) {
+        activeTabId = tabId;
+
+        // Update Buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.id === tabId) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+
+        // Update Panels
+        document.querySelectorAll('.session-panel').forEach(panel => {
+            if (panel.id === `panel-${tabId}`) panel.classList.remove('hidden');
+            else panel.classList.add('hidden');
+        });
+    }
+
+    function closeSession(tabId) {
+        // Cleanup interval
+        if (sessions[tabId].intervalId) {
+            clearInterval(sessions[tabId].intervalId);
+        }
+
+        // Remove DOM
+        const tabBtn = document.querySelector(`.tab-btn[data-id="${tabId}"]`);
+        if (tabBtn) tabBtn.remove();
+
+        const panel = document.getElementById(`panel-${tabId}`);
+        if (panel) panel.remove();
+
+        delete sessions[tabId];
+
+        // Switch to another tab if active was closed
+        if (activeTabId === tabId) {
+            const remainingKeys = Object.keys(sessions);
+            if (remainingKeys.length > 0) {
+                switchTab(remainingKeys[remainingKeys.length - 1]);
+            } else {
+                activeTabId = null;
+                emptyState.classList.remove('hidden');
+            }
+        }
+    }
+
+    function openRunDialog(sessionId) {
+        targetSessionId = sessionId;
+        const session = sessions[sessionId];
+        if (!session) return;
+
         dynamicInputs.innerHTML = '';
 
-        currentConfig.params.forEach(param => {
+        session.params.forEach(param => {
             const group = document.createElement('div');
             group.className = 'form-group';
 
@@ -75,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             } else if (param.type === 'boolean') {
-                input = document.createElement('select'); // Simple boolean dropdown
+                input = document.createElement('select');
                 const optTrue = document.createElement('option');
                 optTrue.value = 'true';
                 optTrue.textContent = 'True';
@@ -98,28 +186,53 @@ document.addEventListener('DOMContentLoaded', () => {
             dynamicInputs.appendChild(group);
         });
 
-        // If no params, showing a message
-        if (currentConfig.params.length === 0) {
+        if (session.params.length === 0) {
             const msg = document.createElement('p');
             msg.textContent = 'No arguments required.';
             msg.style.color = '#94a3b8';
             dynamicInputs.appendChild(msg);
         }
 
-        dialog.classList.remove('hidden');
+        runDialog.classList.remove('hidden');
+    }
+
+    // --- Global Event Listeners ---
+
+    // Verify / Open Tab
+    verifyBtn.addEventListener('click', async () => {
+        const path = folderInput.value.trim();
+        if (!path) return;
+
+        folderStatus.textContent = 'Scanning...';
+        folderStatus.className = 'status-text';
+
+        try {
+            const res = await fetch(`api.php?action=scan&path=${encodeURIComponent(path)}`);
+            const data = await res.json();
+
+            if (data.found) {
+                folderStatus.textContent = '✓ Valid BatchRunner Project found';
+                folderStatus.className = 'status-text success';
+
+                createSession(path, data);
+
+            } else {
+                folderStatus.textContent = '❌ No webrunner.sh found in directory';
+                folderStatus.className = 'status-text error';
+            }
+        } catch (e) {
+            folderStatus.textContent = '❌ Error connecting to server';
+            folderStatus.className = 'status-text error';
+            console.error(e);
+        }
     });
 
-    // Close Modal
-    closeModalBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            dialog.classList.add('hidden');
-        });
-    });
-
-    // Execute
+    // Run Execution (Global Dialog)
     executeBtn.addEventListener('click', async (e) => {
         e.preventDefault();
+        if (!targetSessionId || !sessions[targetSessionId]) return;
+
+        const session = sessions[targetSessionId];
         const inputs = document.querySelectorAll('.param-input');
         const args = {};
 
@@ -127,129 +240,124 @@ document.addEventListener('DOMContentLoaded', () => {
             args[input.dataset.var] = input.value;
         });
 
-        // Close immediately
-        dialog.classList.add('hidden');
+        runDialog.classList.add('hidden');
 
-        // UI Updates
-        logMonitor.classList.remove('hidden');
-        logContent.textContent = ''; // Clear logs
-        logContent.textContent = ''; // Clear logs
-        connectionStatus.textContent = 'Requesting execution...';
-        connectionStatus.className = 'badge';
+        // Update Session UI
+        const els = session.elements;
+        els.logSection.classList.remove('hidden');
+        els.logContent.textContent = '';
+        els.statusBadge.textContent = 'Requesting execution...';
+        els.statusBadge.className = 'connection-status badge';
 
         try {
             // Start process
-            await fetch(`api.php?action=run&path=${encodeURIComponent(currentConfig.path)}`, {
+            await fetch(`api.php?action=run&path=${encodeURIComponent(session.path)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     args: args,
-                    logFile: currentConfig.logFile
+                    logFile: session.logFile
                 })
             });
 
-            connectionStatus.textContent = 'Starting stream...';
-
-            // Start Polling
-            if (eventSource) clearInterval(eventSource); // Reuse var name for interval ID
-
-            let currentOffset = 0;
-            const pollFn = async () => {
-                try {
-                    const logRes = await fetch(`read_log.php?path=${encodeURIComponent(currentConfig.path)}&file=${encodeURIComponent(currentConfig.logFile)}&offset=${currentOffset}`);
-                    const logData = await logRes.json();
-
-                    if (logData.error) {
-                        connectionStatus.textContent = 'Error reading log';
-                        connectionStatus.style.background = '#ef4444';
-                        return;
-                    }
-
-                    if (logData.content) {
-                        logContent.textContent += logData.content;
-                        currentOffset = logData.offset;
-
-                        // Auto scroll
-                        const container = document.getElementById('log-container');
-                        container.scrollTop = container.scrollHeight;
-
-                        // Check for completion
-                        if (logData.content.includes('SUCCESS')) {
-                            connectionStatus.textContent = 'Completed (Success)';
-                            connectionStatus.style.background = '#22c55e';
-                            clearInterval(eventSource);
-                            sendNotification('Batch Process Completed', 'The script execution finished successfully.', 'success');
-                        } else if (logData.content.includes('FAILURE') || logData.content.includes('ERROR')) {
-                            connectionStatus.textContent = 'Failed';
-                            connectionStatus.style.background = '#ef4444';
-                            clearInterval(eventSource);
-                            sendNotification('Batch Process Failed', 'Errors were detected during execution.', 'error');
-                        }
-                    }
-
-                    // Update heartbeat UI visually
-                    connectionStatus.textContent = connectionStatus.textContent.includes('Live') ? 'Live .' : 'Live';
-                    connectionStatus.style.background = '#22c55e';
-                    connectionStatus.style.color = '#000';
-
-                } catch (e) {
-                    console.error('Poll error', e);
-                }
-            };
-
-            // Poll every 1 second
-            eventSource = setInterval(pollFn, 1000);
-
-            // Initial poll immediately
-            pollFn();
+            els.statusBadge.textContent = 'Starting stream...';
+            startPolling(session);
 
         } catch (e) {
             alert('Failed to start execution: ' + e.message);
         }
     });
 
-    // Helper for Notifications
-    function sendNotification(title, body, type) {
-        if (!("Notification" in window)) return;
+    // Close Dialogs
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            runDialog.classList.add('hidden');
+            browserDialog.classList.add('hidden');
+        });
+    });
 
-        if (Notification.permission === "granted") {
-            new Notification(title, { body: body });
+    // Polling Logic
+    function startPolling(session) {
+        if (session.intervalId) clearInterval(session.intervalId);
+
+        let currentOffset = 0;
+        const els = session.elements;
+
+        const pollFn = async () => {
+            try {
+                const logRes = await fetch(`read_log.php?path=${encodeURIComponent(session.path)}&file=${encodeURIComponent(session.logFile)}&offset=${currentOffset}`);
+                const logData = await logRes.json();
+
+                // If session was closed during fetch
+                if (!sessions[session.id]) return;
+
+                if (logData.error) {
+                    els.statusBadge.textContent = 'Error reading log';
+                    els.statusBadge.style.background = '#ef4444';
+                    return;
+                }
+
+                if (logData.content) {
+                    els.logContent.textContent += logData.content;
+                    currentOffset = logData.offset;
+
+                    els.logContainer.scrollTop = els.logContainer.scrollHeight;
+
+                    if (logData.content.includes('SUCCESS')) {
+                        els.statusBadge.textContent = 'Completed (Success)';
+                        els.statusBadge.style.background = '#22c55e';
+                        stopPolling(session);
+                        sendNotification('Batch Completed', `${session.path} finished.`, 'success');
+                    } else if (logData.content.includes('FAILURE') || logData.content.includes('ERROR')) {
+                        els.statusBadge.textContent = 'Failed';
+                        els.statusBadge.style.background = '#ef4444';
+                        stopPolling(session);
+                        sendNotification('Batch Failed', `${session.path} failed.`, 'error');
+                    }
+                }
+
+                // Heartbeat
+                const txt = els.statusBadge.textContent;
+                if (txt.startsWith('Live')) {
+                    els.statusBadge.textContent = txt.includes('.') ? 'Live' : 'Live .';
+                } else if (!txt.includes('Completed') && !txt.includes('Failed')) {
+                    els.statusBadge.textContent = 'Live';
+                    els.statusBadge.style.background = '#22c55e';
+                    els.statusBadge.style.color = '#000';
+                }
+
+            } catch (e) {
+                console.error('Poll error', e);
+            }
+        };
+
+        session.intervalId = setInterval(pollFn, 1000);
+        pollFn(); // Initial
+    }
+
+    function stopPolling(session) {
+        if (session.intervalId) {
+            clearInterval(session.intervalId);
+            session.intervalId = null;
         }
     }
 
-    // Request permission early
-    if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission();
-    }
+    // --- File Browser Logic (Re-integrated) ---
+    // ... Copying previous browser logic ...
 
-    // --- File Browser Logic ---
-    const browseBtn = document.getElementById('browse-btn');
-    const browserDialog = document.getElementById('browser-dialog');
-    const browserList = document.getElementById('browser-list');
-    const browserCurrentPath = document.getElementById('browser-current-path');
-    const browserUpBtn = document.getElementById('browser-up-btn');
-    const browserSelectBtn = document.getElementById('browser-select-btn');
     let browserPath = '';
+    let lastBrowserData = null;
 
     browseBtn.addEventListener('click', () => {
         const currentVal = folderInput.value.trim();
-        browserPath = currentVal || '/'; // Default start
+        browserPath = currentVal || '/';
         loadDirectory(browserPath);
         browserDialog.classList.remove('hidden');
     });
 
     browserUpBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        // Go to parent handled by API response usually, 
-        // but we can just use cached parent or calculate simple string
-        // Actually loadDirectory uses API's response for parent, 
-        // but here we might request current path's parent.
-        // Let's use the 'parent' field from last response if available, or string manipulation.
-        // For now, simpler to refetch '..' relative or trust last API response.
-        // Let's use API response data stored in a variable if we want robust, 
-        // or just rely on API 'list' handling '..' if we passed it? 
-        // No, list takes absolute path.
-        // Let's use the parent path stored in DOM or var.
         if (lastBrowserData && lastBrowserData.parent) {
             loadDirectory(lastBrowserData.parent);
         }
@@ -259,11 +367,8 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         folderInput.value = browserCurrentPath.value;
         browserDialog.classList.add('hidden');
-        // Trigger verify automatically
         verifyBtn.click();
     });
-
-    let lastBrowserData = null;
 
     async function loadDirectory(path) {
         browserList.innerHTML = '<div style="padding:1rem; color:#94a3b8">Loading...</div>';
@@ -279,6 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 browserList.innerHTML = '<div style="padding:1rem; color:#94a3b8">Empty directory</div>';
                 return;
             }
+
+            data.items.sort((a, b) => { // Sort runner first
+                if (a.hasRunner && !b.hasRunner) return -1;
+                if (!a.hasRunner && b.hasRunner) return 1;
+                return a.name.localeCompare(b.name);
+            });
 
             data.items.forEach(item => {
                 const div = document.createElement('div');
@@ -299,5 +410,16 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(e);
             browserList.innerHTML = '<div style="padding:1rem; color:#ef4444">Error loading directory</div>';
         }
+    }
+
+    // Helper for Notifications
+    function sendNotification(title, body, type) {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body });
+        }
+    }
+    if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission();
     }
 });

@@ -262,3 +262,61 @@ select:focus {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
 }
+/* Tabs Styles */
+.tabs-header {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    padding-bottom: 4px; /* for scrollbar */
+}
+
+.tab-btn {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    background: var(--accent-color);
+    color: #0f172a;
+    font-weight: 600;
+    border-color: var(--accent-color);
+}
+
+.tab-close {
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: 0.6;
+    padding: 0 2px;
+}
+
+.tab-close:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.1);
+    border-radius: 50%;
+}
+
+.path-badge {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(0,0,0,0.2);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+}
+

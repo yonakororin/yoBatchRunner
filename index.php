@@ -19,48 +19,67 @@
         <main class="main-content">
             <section class="folder-selection glass-panel">
                 <div class="input-group">
-                    <label for="folder-path">Target Directory</label>
+                    <label for="folder-path">Top Directory</label>
                     <div class="input-wrapper">
                         <input type="text" id="folder-path" placeholder="/path/to/project" value="/mnt/c/Projects/BatchRunner/demo">
                         <button id="browse-btn" class="btn secondary">
                             <span class="icon">📂</span> Browse
                         </button>
                         <button id="check-folder-btn" class="btn primary">
-                            <span class="icon">🔍</span> Verify
+                            <span class="icon">➕</span> Open Tab
                         </button>
                     </div>
                     <p id="folder-status" class="status-text"></p>
                 </div>
             </section>
 
-            <section id="runner-section" class="runner-section glass-panel hidden">
+            <!-- Tabs Header -->
+            <div id="tabs-header" class="tabs-header">
+                <!-- Tab buttons injected here -->
+            </div>
+
+            <!-- Tabs Content -->
+            <div id="tabs-content" class="tabs-content">
+                <!-- Session panels injected here -->
+                <div id="empty-state" class="glass-panel" style="text-align:center; color:#94a3b8; padding: 3rem;">
+                    Select a folder and click "Open Tab" to start.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Template for Session Panel -->
+    <template id="session-template">
+        <div class="session-panel hidden">
+            <section class="runner-section glass-panel">
                 <div class="runner-header">
                     <h2>Available Scripts</h2>
+                    <span class="path-badge"></span>
                 </div>
                 <div class="script-card">
                     <div class="script-info">
                         <h3>webrunner.sh</h3>
                         <p>Main execution entry point.</p>
                     </div>
-                    <button id="open-dialog-btn" class="btn accent">
+                    <button class="open-dialog-btn btn accent">
                         Run Script
                     </button>
                 </div>
             </section>
 
-            <section id="log-monitor" class="log-monitor glass-panel hidden">
+            <section class="log-monitor glass-panel hidden">
                 <div class="log-header">
                     <h3>Execution Logs</h3>
                     <div class="log-controls">
-                        <span id="connection-status" class="badge">Disconnected</span>
+                        <span class="connection-status badge">Disconnected</span>
                     </div>
                 </div>
-                <div id="log-container" class="log-container">
-                    <pre id="log-content"></pre>
+                <div class="log-container">
+                    <pre class="log-content"></pre>
                 </div>
             </section>
-        </main>
-    </div>
+        </div>
+    </template>
 
     <!-- File Browser Modal -->
     <div id="browser-dialog" class="modal-overlay hidden">

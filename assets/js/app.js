@@ -178,13 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             connectionStatus.textContent = 'Completed (Success)';
                             connectionStatus.style.background = '#22c55e';
                             clearInterval(eventSource);
+                            sendNotification('Batch Process Completed', 'The script execution finished successfully.', 'success');
                         } else if (logData.content.includes('FAILURE') || logData.content.includes('ERROR')) {
                             connectionStatus.textContent = 'Failed';
                             connectionStatus.style.background = '#ef4444';
-                            // Don't stop polling immediately in case more logs come, or maybe stop? 
-                            // Usually scripts exit after error, but let's keep polling for a few more seconds or just let user stop.
-                            // For this demo, let's stop on explicit expected tokens.
                             clearInterval(eventSource);
+                            sendNotification('Batch Process Failed', 'Errors were detected during execution.', 'error');
                         }
                     }
 
@@ -195,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 } catch (e) {
                     console.error('Poll error', e);
-                    // Don't stop polling on transient network error, but maybe warn
                 }
             };
 
@@ -209,4 +207,18 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Failed to start execution: ' + e.message);
         }
     });
+
+    // Helper for Notifications
+    function sendNotification(title, body, type) {
+        if (!("Notification" in window)) return;
+
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body });
+        }
+    }
+
+    // Request permission early
+    if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
 });

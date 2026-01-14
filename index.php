@@ -1,7 +1,20 @@
 <?php
 session_start();
+
+function get_current_base_url() {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $host = $_SERVER['HTTP_HOST'];
+    $path = dirname($_SERVER['SCRIPT_NAME']);
+    $path = str_replace('\\', '/', $path);
+    $path = rtrim($path, '/');
+    return $protocol . $host . $path;
+}
+
+$base_url = get_current_base_url();
+$sso_url = '../yoSSO';
+
 if (!isset($_SESSION['user'])) {
-    header("Location: http://localhost:8001/?redirect_uri=http://localhost:8000/callback.php");
+    header("Location: $sso_url/?redirect_uri=" . urlencode("$base_url/callback.php"));
     exit;
 }
 ?>
@@ -26,7 +39,7 @@ if (!isset($_SESSION['user'])) {
                     <span style="font-size: 0.8rem;">▼</span>
                 </div>
                 <div class="dropdown-content">
-                    <a href="http://localhost:8001/change_password.php?redirect_uri=http://localhost:8000/">Change Password</a>
+                    <a href="<?= htmlspecialchars($sso_url) ?>/change_password.php?redirect_uri=<?= urlencode($base_url . '/') ?>">Change Password</a>
                     <a href="logout.php" style="color: #ef4444;">Logout</a>
                 </div>
             </div>

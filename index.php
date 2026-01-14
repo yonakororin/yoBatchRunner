@@ -1,10 +1,35 @@
-<link rel="stylesheet" href="assets/css/style.css">
+<?php
+session_start();
+if (!isset($_SESSION['user'])) {
+    header("Location: http://localhost:8001/?redirect_uri=http://localhost:8000/callback.php");
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BatchRunner</title>
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
     <div class="app-container">
-        <header class="app-header">
-            <h1>BatchRunner</h1>
-            <p class="subtitle">Advanced Shell Script Orchestration</p>
+        <header class="app-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>BatchRunner</h1>
+                <p class="subtitle">Advanced Shell Script Orchestration</p>
+            </div>
+            <div class="user-dropdown">
+                <div class="user-btn">
+                    <span style="color: var(--text-secondary);">User:</span>
+                    <strong><?= htmlspecialchars($_SESSION['user']) ?></strong>
+                    <span style="font-size: 0.8rem;">▼</span>
+                </div>
+                <div class="dropdown-content">
+                    <a href="http://localhost:8001/change_password.php?redirect_uri=http://localhost:8000/">Change Password</a>
+                    <a href="logout.php" style="color: #ef4444;">Logout</a>
+                </div>
+            </div>
         </header>
 
         <main class="main-content">

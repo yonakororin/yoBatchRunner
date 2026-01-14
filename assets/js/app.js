@@ -419,6 +419,31 @@ document.addEventListener('DOMContentLoaded', () => {
             new Notification(title, { body: body });
         }
     }
+    // User Dropdown Logic
+    const userBtn = document.querySelector('.user-btn');
+    const dropdownContent = document.querySelector('.dropdown-content');
+
+    if (userBtn && dropdownContent) {
+        userBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownContent.classList.toggle('show');
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!dropdownContent.contains(e.target) && !userBtn.contains(e.target)) {
+                dropdownContent.classList.remove('show');
+            }
+        });
+
+        // Close on item click (optional if navigation unloads page, but good for SPA feel or anchors)
+        dropdownContent.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                dropdownContent.classList.remove('show');
+            });
+        });
+    }
+
     if ("Notification" in window && Notification.permission !== "denied") {
         Notification.requestPermission();
     }

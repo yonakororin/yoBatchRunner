@@ -23,6 +23,8 @@ if (!isset($_SESSION['user'])) {
 <head>
     <meta charset="UTF-8">
     <title>BatchRunner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/theme.css">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -32,15 +34,18 @@ if (!isset($_SESSION['user'])) {
                 <h1>BatchRunner</h1>
                 <p class="subtitle">Advanced Shell Script Orchestration</p>
             </div>
-            <div class="user-dropdown">
-                <div class="user-btn">
-                    <span style="color: var(--text-secondary);">User:</span>
-                    <strong><?= htmlspecialchars($_SESSION['user']) ?></strong>
-                    <span style="font-size: 0.8rem;">▼</span>
-                </div>
-                <div class="dropdown-content">
-                    <a href="<?= htmlspecialchars($sso_url) ?>/change_password.php?redirect_uri=<?= urlencode($base_url . '/') ?>">Change Password</a>
-                    <a href="logout.php" style="color: #ef4444;">Logout</a>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="theme-toggle" title="Toggle Theme"><i class="fa-solid fa-moon"></i><i class="fa-solid fa-sun"></i></button>
+                <div class="user-dropdown">
+                    <div class="user-btn">
+                        <span style="color: var(--text-secondary);">User:</span>
+                        <strong><?= htmlspecialchars($_SESSION['user']) ?></strong>
+                        <span style="font-size: 0.8rem;">▼</span>
+                    </div>
+                    <div class="dropdown-content">
+                        <a href="<?= htmlspecialchars($sso_url) ?>/change_password.php?redirect_uri=<?= urlencode($base_url . '/') ?>">Change Password</a>
+                        <a href="logout.php" style="color: #ef4444;">Logout</a>
+                    </div>
                 </div>
             </div>
         </header>
@@ -155,5 +160,6 @@ if (!isset($_SESSION['user'])) {
     </div>
 
     <script src="assets/js/app.js"></script>
+    <script src="../shared/theme.js"></script>
 </body>
 </html>
